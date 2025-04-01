@@ -73,6 +73,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
           privileged: false
+          readOnlyRootFilesystem: true
 ---
 apiVersion: v1
 kind: Service

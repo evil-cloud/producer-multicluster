@@ -1,0 +1,41 @@
+name: Validate Kubernetes Manifests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  security-events: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up kubeconform
+        uses: yokawasa/action-setup-kube-tools@v0.9.2
+        with:
+          setup-tools: kubeconform
+
+      - name: Find and validate manifests
+        run: |
+          find k8s -type f -name "*.yaml" -o -name "*.yml" | while IFS= read -r file; do
+            echo "Validating: $file"
+            kubeconform "$file"
+          done
+
+      - name: Scan manifests with kube-linter
+        uses: stackrox/kube-linter-action@v1.0.4
+        with:
+          directory: k8s
+          format: sarif
+          output-file: kube-linter.sarif
+
+      - name: Upload kube-linter findings to GitHub Security (optional)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: kube-linter.sarif
