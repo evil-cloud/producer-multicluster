@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+  labels:
+    istio-injection: enabled
+    istio.io/rev: asm-managed 
+  annotations:
+    mesh.cloud.google.com/proxy: '{"managed":"true"}'
+    description: "Namespace para desplegar las aplicaciones multi-cluster."
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+        
+    spec:
+      containers:
+      - name: producer
+        image: d4rkghost47/python-multicluster-producer:0.0.4
+        ports:
+        - containerPort: 8000
+        env:
+        - name: CLUSTER_NAME
+          value: "gke-us"
+        - name: SERVICE_B_URL
+          value: "http://consumer:8000/"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+        resources:
+          requests:
+            cpu: "20m"
+            memory: "128Mi"
+          limits:
+            cpu: "100m"
+            memory: "248Mi" 
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          
+        securityContext:
+          runAsUser: 10001
+          runAsGroup: 3000
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+          privileged: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: producer
+  namespace: app
+  labels:
+    app: producer
+    service: producer
+spec:
+  type: ClusterIP
+  selector:
+    app: producer
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+    name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer
+  namespace: app
+  labels:
+    app: consumer
+    service: consumer
+spec:
+  type: ClusterIP
+  selector:
+    app: consumer
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+    name: http
