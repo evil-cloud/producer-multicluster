@@ -92,21 +92,3 @@ spec:
     port: 8000
     targetPort: 8000
     name: http
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: consumer
-  namespace: app
-  labels:
-    app: consumer
-    service: consumer
-spec:
-  type: ClusterIP
-  selector:
-    app: consumer
-  ports:
-  - protocol: TCP
-    port: 8000
-    targetPort: 8000
-    name: http
